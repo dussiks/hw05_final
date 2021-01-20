@@ -78,7 +78,7 @@ def profile(request, username):
 
 def post_view(request, username, post_id):
     author = get_object_or_404(User, username=username)
-    post = get_object_or_404(Post, id=post_id)
+    post = get_object_or_404(Post, author__username=username, id=post_id)
     comments_list = post.comments.all()
     posts_count = author.posts.count()
     followers_count = author.following.count()
@@ -98,7 +98,7 @@ def post_view(request, username, post_id):
 
 def post_edit(request, username, post_id):
     post_author = get_object_or_404(User, username=username)
-    post = get_object_or_404(Post, id=post_id)
+    post = get_object_or_404(Post, author__username=username, id=post_id)
     if request.user != post_author:
         return redirect('post', username=username, post_id=post_id)
     form = PostForm(

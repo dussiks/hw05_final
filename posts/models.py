@@ -16,7 +16,7 @@ class Group(models.Model):
     slug = models.SlugField(
         verbose_name='слаг',
         unique=True,
-        help_text=('Слаг должен быть уникальным. Используйье только '
+        help_text=('Слаг должен быть уникальным. Используйте только '
                    'латиницу, цифры, дефисы и знаки подчёркивания.'),
     )
 

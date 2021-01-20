@@ -12,20 +12,22 @@
                                 <div class="h3 text-muted"> 
                                         @{{ author.username }} 
                                 </div> 
+                                {% if author != request.user %}
                                 <li class="list-group-item">
-                                    {% if following %}
-                                    <a class="btn btn-lg btn-light" 
+                                        {% if following %}
+                                        <a class="btn btn-lg btn-light" 
                                             href="{% url 'profile_unfollow' author.username %}" role="button"> 
                                             Отписаться 
-                                    </a> 
-                                    {% else %}
-                                    <a class="btn btn-lg btn-primary" 
+                                        </a> 
+                                         {% else %}
+                                        <a class="btn btn-lg btn-primary" 
                                             href="{% url 'profile_follow' author.username %}" role="button">
-                                    Подписаться 
-                                    </a>
-                                    {% endif %}
+                                        Подписаться 
+                                        </a>
+                                        {% endif %}
                                 </li> 
-                            </div> 
+                                {% endif %}
+                        </div> 
                         <ul class="list-group list-group-flush"> 
                                 <li class="list-group-item"> 
                                         <div class="h6 text-muted"> 

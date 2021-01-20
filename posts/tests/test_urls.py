@@ -2,6 +2,7 @@ import shutil
 import tempfile
 
 from django.conf import settings
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
 
@@ -13,14 +14,13 @@ SLUG = 'test_slug'
 INDEX_URL = '/'
 FOLLOW_URL = '/follow/'
 NEW_URL = '/new/'
-GROUP_URL = '/group/test_slug/'
+GROUP_URL = f'/group/{SLUG}/'
 IMG = (b'\x47\x49\x46\x38\x39\x61\x02\x00'
        b'\x01\x00\x80\x00\x00\x00\x00\x00'
        b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
        b'\x00\x00\x00\x2C\x00\x00\x00\x00'
        b'\x02\x00\x01\x00\x00\x02\x02\x0C'
-       b'\x0A\x00\x3B'
-)
+       b'\x0A\x00\x3B')
 
 
 class PostsURLTests(TestCase):
@@ -28,15 +28,18 @@ class PostsURLTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         settings.MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
+        uploaded = SimpleUploadedFile(
+            name='small.gif',
+            content=IMG,
+            content_type='image/gif',
+        )
         cls.user_john = User.objects.create(username='john')
         cls.user_bob = User.objects.create(username='bob')
-
         cls.group = Group.objects.create(
             title='Test title',
             description='About group',
             slug=SLUG,
         )
-
         posts_list = []
         for i in range(1, 15):
             posts_list.append(Post(
@@ -44,19 +47,16 @@ class PostsURLTests(TestCase):
                 author=cls.user_bob,
             ))
         Post.objects.bulk_create(posts_list)
-
         cls.post = Post.objects.create(
             author=cls.user_bob,
             text='Тестовый пост Боба.',
             group=cls.group,
-            image=IMG,
+            image=uploaded,
         )
-
         cls.follow = Follow.objects.create(
             user=cls.user_john,
             author=cls.user_bob,
         )
-
         cls.comment = Comment.objects.create(
             post=cls.post,
             author=cls.user_john,
@@ -79,8 +79,8 @@ class PostsURLTests(TestCase):
         self.post_url = f'/{post.author.username}/{post.id}/'
         self.post_edit_url = f'/{post.author.username}/{post.id}/edit/'
         self.comment_url = f'/{post.author.username}/{post.id}/comment/'
-        self.follow_url = f'/{post.author.username}/follow/'
-        self.unfollow_url = f'/{post.author.username}/unfollow/'
+        self.user_follow_url = f'/{post.author.username}/follow/'
+        self.user_unfollow_url = f'/{post.author.username}/unfollow/'
 
     def test_urls_uses_correct_template(self):
         """URL-address uses corresponding template."""
@@ -109,8 +109,8 @@ class PostsURLTests(TestCase):
             self.post_url: 200,
             self.post_edit_url: 302,
             self.comment_url: 302,
-            self.follow_url: 302,
-            self.unfollow_url: 302,
+            self.user_follow_url: 302,
+            self.user_unfollow_url: 302,
         }
         for url_name, value in templates_url_names.items():
             with self.subTest(url_name=url_name):
@@ -129,6 +129,9 @@ class PostsURLTests(TestCase):
             self.profile_url: 200,
             self.post_url: 200,
             self.post_edit_url: 200,
+            self.comment_url: 302,
+            self.user_follow_url: 302,
+            self.user_unfollow_url: 302,
             }
         for url_name, value in templates_url_names.items():
             with self.subTest(url_name=url_name):
@@ -141,14 +144,6 @@ class PostsURLTests(TestCase):
         """
         response = self.client_john.get(self.post_edit_url)
         self.assertEqual(response.status_code, 302)
-
-    def test_new_url_redirect_anonymous_user(self):
-        """
-        After calling /new/ page by unauthorized user he is redirected to
-        authorization page /login/.
-        """
-        response = self.guest_client.get(NEW_URL, follow=True)
-        self.assertRedirects(response, '/auth/login/?next=/new/')
 
     def test_post_edit_url_redirect_anonymous_user(self):
         """After calling url for post edit by unauthorized user he is
@@ -168,4 +163,38 @@ class PostsURLTests(TestCase):
         response = self.guest_client.get('/404/')
         self.assertEqual(response.status_code, 404)
 
+    def test_pointed_urls_redirect_anonymous_user_to_login(self):
+        post = PostsURLTests.post
+        author = post.author.username
+        templates_urls = {
+            NEW_URL: '/auth/login/?next=/new/',
+            FOLLOW_URL: '/auth/login/?next=/follow/',
+            self.comment_url: f'/auth/login/?next=/{author}/{post.id}/comment/',
+            self.user_follow_url: f'/auth/login/?next=/{author}/follow/',
+            self.user_unfollow_url: f'/auth/login/?next=/{author}/unfollow/',
+            }
+        for url_name, redirect_address in templates_urls.items():
+            with self.subTest(url_name=url_name):
+                response = self.guest_client.get(url_name)
+                self.assertRedirects(response, redirect_address)
 
+    def test_user_follow_url_redirect_author(self):
+        """If authorized user calls url to follow profile author
+        he is redirected to profile viewing page.
+        """
+        response = self.client_john.get(self.user_follow_url, follow=True)
+        self.assertRedirects(response, self.profile_url)
+
+    def test_user_unfollow_url_redirect_autorized_user(self):
+        """If authorized user calls url to unfollow profile author
+        he is redirected to profile viewing page.
+        """
+        response = self.client_john.get(self.user_unfollow_url, follow=True)
+        self.assertRedirects(response, self.profile_url)
+
+    def test_comment_url_redirect_user(self):
+        """If authorized user calls url for post comment he is redirected
+        to post viewing page.
+        """
+        response = self.client_john.get(self.comment_url, follow=True)
+        self.assertRedirects(response, self.post_url)

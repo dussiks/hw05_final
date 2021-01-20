@@ -11,15 +11,14 @@ from posts.forms import PostForm
 from posts.models import Group, Post
 
 
+User = get_user_model()
 SLUG = 'slug_one'
 IMG = (b'\x47\x49\x46\x38\x39\x61\x02\x00'
        b'\x01\x00\x80\x00\x00\x00\x00\x00'
        b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
        b'\x00\x00\x00\x2C\x00\x00\x00\x00'
        b'\x02\x00\x01\x00\x00\x02\x02\x0C'
-       b'\x0A\x00\x3B'
-)
-User = get_user_model()
+       b'\x0A\x00\x3B')
 
 
 class PostFormTests(TestCase):
@@ -29,24 +28,20 @@ class PostFormTests(TestCase):
         settings.MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
         cls.user_bob = User.objects.create(username='bob')
         cls.user_john = User.objects.create(username='john')
-
         cls.group = Group.objects.create(
             title='First test group title',
             description='About first test group',
             slug=SLUG,
         )
-
         Post.objects.create(
             text='Test first post',
             author=cls.user_bob,
             group=Group.objects.get(slug=SLUG),
         )
-
         cls.post = Post.objects.create(
             text='Test second post',
             author=cls.user_bob,
         )
-
         cls.post_form = PostForm()
 
     @classmethod
@@ -85,12 +80,15 @@ class PostFormTests(TestCase):
         last_group_post = answer.context.get('page')[0]
         self.assertEqual(last_group_post, new_post)
 
-    def test_post_help_texts(self):
+    def test_post_text_field_help_text(self):
+        """help-text for post form fields are written as desired."""
         text_help_text = PostFormTests.post_form.fields['text'].help_text
-        group_help_text = PostFormTests.post_form.fields['group'].help_text
         self.assertEqual(
             text_help_text,
             'Напишите текст Вашей новой записи. Это обязательно.')
+
+    def test_post_group_field_help_text(self):
+        """help-text for group form fields are written as desired."""
         group_help_text = PostFormTests.post_form.fields['group'].help_text
         self.assertEqual(
             group_help_text,

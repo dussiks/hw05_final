@@ -5,6 +5,7 @@ from posts.models import Group, Post, Comment
 
 
 User = get_user_model()
+SLUG = 'test_slug'
 
 
 class PostCommentModelTest(TestCase):
@@ -68,9 +69,9 @@ class GroupModelTest(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.group = Group.objects.create(
-            title='test title!',
+            title='Group test title',
             description='Описание тестовой группы',
-            slug='test_slug',
+            slug=SLUG,
         )
 
     def test_verbose_name(self):
@@ -91,7 +92,7 @@ class GroupModelTest(TestCase):
         group = GroupModelTest.group
         field_help_texts = {
             'title': 'введите название группы.',
-            'slug': ('Слаг должен быть уникальным. Используйье только '
+            'slug': ('Слаг должен быть уникальным. Используйте только '
                      'латиницу, цифры, дефисы и знаки подчёркивания.')
         }
         for value, expected in field_help_texts.items():
