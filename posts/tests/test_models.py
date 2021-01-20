@@ -1,24 +1,30 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from posts.models import Group, Post
+from posts.models import Group, Post, Comment
 
 
 User = get_user_model()
 
 
-class PostModelTest(TestCase):
+class PostCommentModelTest(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        author = User.objects.create(username='Vova')
         cls.post = Post.objects.create(
-            author=User.objects.create(username='VovaPanov'),
+            author=author,
             text='Тестовый текст',
+        )
+        cls.comment = Comment.objects.create(
+            author=author,
+            post=cls.post,
+            text='Тестовый комментарий для проверки',
         )
 
     def test_verbose_name(self):
-        """verbose_name field content equals with desired."""
-        post = PostModelTest.post
+        """Post's verbose_name field content equals with desired."""
+        post = PostCommentModelTest.post
         field_verboses = {
             'text': 'текст',
             'group': 'группа',
@@ -29,8 +35,8 @@ class PostModelTest(TestCase):
                     post._meta.get_field(value).verbose_name, expected)
 
     def test_help_text(self):
-        """help_text field content equals with desired."""
-        post = PostModelTest.post
+        """Post's help_text field content equals with desired."""
+        post = PostCommentModelTest.post
         field_help_texts = {
             'text': 'Напишите текст Вашей новой записи. Это обязательно.',
             'group': 'Выберите группу. Это необязательно.',
@@ -40,13 +46,21 @@ class PostModelTest(TestCase):
                 self.assertEqual(
                     post._meta.get_field(value).help_text, expected)
 
-    def test_object_name_is_text_field(self):
+    def test_post_name_is_text_field(self):
         """In __str__ field of post object written value of
         post.text[:15] field.
         """
-        post = PostModelTest.post
-        expected_object_name = post.text[:15]
-        self.assertEqual(expected_object_name, str(post))
+        post = PostCommentModelTest.post
+        expected_post_name = post.text[:15]
+        self.assertEqual(expected_post_name, str(post))
+
+    def test_comment_name_is_text_field(self):
+        """In __str__ field of comment object written value of
+        post.text[:20] field.
+        """
+        comment = PostCommentModelTest.comment
+        expected_comment_name = comment.text[:20]
+        self.assertEqual(expected_comment_name, str(comment))
 
 
 class GroupModelTest(TestCase):
@@ -85,7 +99,7 @@ class GroupModelTest(TestCase):
                 self.assertEqual(
                     group._meta.get_field(value).help_text, expected)
 
-    def test_object_name_is_title_field(self):
+    def test_group_name_is_title_field(self):
         """
         In __str__ field of group object written value of group.title field.
         """

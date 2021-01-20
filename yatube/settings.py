@@ -151,3 +151,6 @@ CACHES = {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
     }
 }
+
+# определяем паджинатор
+PER_PAGE = 10

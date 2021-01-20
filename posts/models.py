@@ -45,7 +45,6 @@ class Post(models.Model):
         help_text='Выберите группу. Это необязательно.',
     )
     image = models.ImageField(upload_to="media/", blank=True, null=True,)
-    
 
     class Meta:
         ordering = ("-pub_date",)
@@ -55,7 +54,9 @@ class Post(models.Model):
 
 
 class Comment(models.Model):
-    text = models.TextField(null=False,)
+    text = models.TextField(
+        null=False,
+    )
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -87,4 +88,4 @@ class Follow(models.Model):
         on_delete=models.CASCADE,
         null=False,
         related_name='following',
-        )
+    )

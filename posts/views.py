@@ -1,16 +1,19 @@
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
-
+from django.conf import settings
 
 from .forms import CommentForm, PostForm
 from .models import Group, Post, User, Follow
 
 
+PER_PAGE = settings.PER_PAGE
+
+
 def index(request):
     """Return 10 posts per page beginning from last."""
     post_list = Post.objects.all()
-    paginator = Paginator(post_list, 10)
+    paginator = Paginator(post_list, PER_PAGE)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
     index_page = paginator.get_page(1)
@@ -26,7 +29,7 @@ def group_posts(request, slug):
     """Return 10 posts per page in group beginning from last."""
     group = get_object_or_404(Group, slug=slug)
     group_post_list = group.posts.all()
-    paginator = Paginator(group_post_list, 10)
+    paginator = Paginator(group_post_list, PER_PAGE)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
     context = {
@@ -54,13 +57,13 @@ def profile(request, username):
     author = get_object_or_404(User, username=username)
     author_posts_list = author.posts.all()
     posts_count = author.posts.count()
-    paginator = Paginator(author_posts_list, 10)
+    paginator = Paginator(author_posts_list, PER_PAGE)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
     followers_count = author.following.count()
     followings_count = author.follower.count()
     following = (request.user.is_authenticated and 
-                 Follow.objects.filter(author=author, user=user).exists())
+                Follow.objects.filter(author=author, user=user).exists())
     context = {
         "page": page,
         "author": author,
@@ -78,10 +81,14 @@ def post_view(request, username, post_id):
     post = get_object_or_404(Post, id=post_id)
     comments_list = post.comments.all()
     posts_count = author.posts.count()
+    followers_count = author.following.count()
+    followings_count = author.follower.count()
     form = CommentForm(request.POST or None)
     context = {
         "post": post,
         "posts_count": posts_count,
+        "followers_count": followers_count,
+        "followings_count": followings_count,
         "author": author,
         "comments_list": comments_list,
         "form": form,
@@ -89,7 +96,6 @@ def post_view(request, username, post_id):
     return render(request, 'post.html', context)
 
 
-@login_required
 def post_edit(request, username, post_id):
     post_author = get_object_or_404(User, username=username)
     post = get_object_or_404(Post, id=post_id)
@@ -126,12 +132,9 @@ def add_comment(request, username, post_id):
 @login_required
 def follow_index(request):
     user = request.user
-    posts_list = Post.objects.select_related('author').filter(author__following__user=user)
-    #follow_list = Follow.objects.filter(user=user)
-    #posts_list = []
-    #for item in follow_list:
-    #    posts_list.append(item.author.posts.all())
-    paginator = Paginator(posts_list, 10)
+    posts_list = Post.objects.select_related('author').filter(
+                 author__following__user=user)
+    paginator = Paginator(posts_list, PER_PAGE)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
     context = {
