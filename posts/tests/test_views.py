@@ -9,6 +9,7 @@ from django.urls import reverse
 from django import forms
 
 from posts.models import Group, Post, Follow, Comment
+from posts.forms import CommentForm
 
 
 User = get_user_model()
@@ -38,6 +39,7 @@ class PostsViewsTests(TestCase):
         )
         cls.user_john = User.objects.create(username='john')
         cls.user_bob = User.objects.create(username='bob')
+        cls.user_alf = User.objects.create(username='alf')
         cls.group = Group.objects.create(
             title="First test group title",
             description='About first test group',
@@ -71,17 +73,8 @@ class PostsViewsTests(TestCase):
             group=Group.objects.get(slug='slug_one'),
             image=uploaded,
         )
-        cls.follow = Follow.objects.create(
-            user=cls.user_john,
-            author=cls.user_bob,
-        )
-        cls.comment = Comment.objects.create(
-            author=cls.user_john,
-            post=cls.post,
-            text='Тестовый комментарий Джона на пост Боба.'
-        )
-        cls.all_posts = Post.objects.all()
         cls.posts_count = cls.user_bob.posts.count()
+        cls.all_posts = Post.objects.all()
 
     @classmethod
     def tearDownClass(cls):
@@ -89,11 +82,25 @@ class PostsViewsTests(TestCase):
         super().tearDownClass()
 
     def setUp(self):
+        user_bob = PostsViewsTests.user_bob
+        user_john = PostsViewsTests.user_john
+        user_alf = PostsViewsTests.user_alf
         self.guest_client = Client()
         self.client_bob = Client()
         self.client_john = Client()
-        self.client_bob.force_login(PostsViewsTests.user_bob)
-        self.client_john.force_login(PostsViewsTests.user_john)
+        self.client_alf = Client()
+        self.client_bob.force_login(user_bob)
+        self.client_john.force_login(user_john)
+        self.client_alf.force_login(user_alf)
+        self.follow = Follow.objects.create(
+            user=user_john,
+            author=user_bob,
+        )
+        self.comment = Comment.objects.create(
+            author=user_john,
+            post=PostsViewsTests.post,
+            text='Тестовый комментарий Джона на пост Боба.'
+        )
 
     def test_pages_uses_correct_template(self):
         """Each view-name uses corresponding template."""
@@ -130,12 +137,17 @@ class PostsViewsTests(TestCase):
 
     def test_profile_show_correct_context(self):
         """Template profile generated with correct context."""
-        author = PostsViewsTests.post.author.username
-        response = self.client_bob.get(reverse('profile', args=[author]))
+        post = PostsViewsTests.post
+        author = post.author
+        response = self.client_john.get(reverse('profile',
+                                                args=[author.username]))
         expected_page_details = {
-            PostsViewsTests.post: response.context.get('page')[0],
+            post: response.context.get('page')[0],
             PostsViewsTests.posts_count: response.context.get('posts_count'),
-            PostsViewsTests.user_bob: response.context.get('author'),
+            author: response.context.get('author'),
+            author.following.count(): response.context.get('followers_count'),
+            author.follower.count(): response.context.get('followings_count'),
+            True: response.context.get('following'),
         }
         for key, value in expected_page_details.items():
             with self.subTest(key=key):
@@ -169,9 +181,8 @@ class PostsViewsTests(TestCase):
     def test_post_edit_show_correct_context(self):
         """Template post_edit generated with correct context."""
         post = PostsViewsTests.post
-        author = post.author.username
-        post_edit_url = reverse('post_edit', args=[author, post.id])
-        response = self.client_bob.get(post_edit_url)
+        edit_url = reverse('post_edit', args=[post.author.username, post.id])
+        response = self.client_bob.get(edit_url)
         form_fields = {
             'text': forms.fields.CharField,
             'group': forms.fields.ChoiceField,
@@ -186,15 +197,21 @@ class PostsViewsTests(TestCase):
     def test_post_show_correct_context(self):
         """"Template post generated with correct context."""
         post = PostsViewsTests.post
-        post_url = reverse('post', args=[post.author.username, post.id])
+        author = post.author
+        post_url = reverse('post', args=[author.username, post.id])
         response = self.client_john.get(post_url)
         expected_page_details = {
-            PostsViewsTests.post: response.context.get('post'),
+            post: response.context.get('post'),
+            author: response.context.get('author'),
             PostsViewsTests.posts_count: response.context.get('posts_count'),
+            author.following.count(): response.context.get('followers_count'),
+            author.follower.count(): response.context.get('followings_count'),
         }
         for key, value in expected_page_details.items():
             with self.subTest(key=key):
                 self.assertEqual(key, value)
+        form_field = response.context.get('form').fields.get('text')
+        self.assertIsInstance(form_field, forms.fields.CharField)
 
     def test_homepage_show_correct_number_of_posts(self):
         """"Template homepage contains required amount of generated posts."""
@@ -209,3 +226,47 @@ class PostsViewsTests(TestCase):
         group_url = reverse('group', args=['slug_one'])
         response = self.client_john.get(group_url)
         self.assertEqual(len(response.context['page']), group_items)
+
+    def test_user_follow_and_unfollow_profile_author(self):
+        """Correct Follow object created between user and profile author.
+        After calling unfollow user stops following profile author.
+        """
+        post = PostsViewsTests.post
+        author = post.author
+        follow_url = reverse('profile_follow', args=[author.username])
+        unfollow_url = reverse('profile_unfollow', args=[author.username])
+        Follow.objects.all().delete()
+        self.client_john.get(follow_url)
+        user = PostsViewsTests.user_john
+        exist_answer = Follow.objects.filter(user=user, author=author).exists()
+        self.assertEqual(exist_answer, True)
+        self.client_john.get(unfollow_url)
+        exist_answer = Follow.objects.filter(user=user, author=author).exists()
+        self.assertEqual(exist_answer, False)
+
+    def test_new_post_seen_only_for_followers(self):
+        """New post created by author seen only for followers and not seen
+        on user's page who is not follower.
+        """
+        user_author = PostsViewsTests.user_bob
+        user_follower = PostsViewsTests.user_john
+        user_not_follower = PostsViewsTests.user_alf
+        Follow.objects.all().delete()
+        Follow.objects.create(user=user_follower, author=user_author)
+        exist_answer = Follow.objects.filter(
+                       user=user_follower, author=user_author).exists()
+        self.assertEqual(exist_answer, True)
+        exist_answer = Follow.objects.filter(
+                       user=user_not_follower, author=user_author).exists()
+        self.assertEqual(exist_answer, False)
+        new_post = Post.objects.create(
+            text='Test bob special post',
+            author=user_author,
+            group=Group.objects.get(slug='slug_one'),
+        )
+        response_john = self.client_john.get(FOLLOW_URL)
+        response_alf = self.client_alf.get(FOLLOW_URL)
+        actual_john_post = response_john.context.get('post')
+        actual_alf_post = response_alf.context.get('post')
+        self.assertEqual(new_post, actual_john_post)
+        self.assertEqual(None, actual_alf_post)

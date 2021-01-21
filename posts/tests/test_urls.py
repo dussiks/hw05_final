@@ -185,7 +185,7 @@ class PostsURLTests(TestCase):
         response = self.client_john.get(self.user_follow_url, follow=True)
         self.assertRedirects(response, self.profile_url)
 
-    def test_user_unfollow_url_redirect_autorized_user(self):
+    def test_user_unfollow_url_redirect_authorized_user(self):
         """If authorized user calls url to unfollow profile author
         he is redirected to profile viewing page.
         """
