@@ -7,7 +7,7 @@ from django.core.cache import cache
 from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
 
-from posts.models import Group, Post, Comment, Follow
+from posts.models import Group, Post, Comment
 
 
 User = get_user_model()
