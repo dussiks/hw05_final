@@ -123,6 +123,7 @@ class PostFormTests(TestCase):
             response,
             reverse('post', args=[post.author.username, post.id]))
         self.assertContains(response, 'Edited')
+        self.assertEqual(response.status_code, 200)
 
     def test_create_comment(self):
         """Valid form create correct comment in choosen post."""
@@ -141,6 +142,7 @@ class PostFormTests(TestCase):
             reverse('post', args=[post.author.username, post.id]))
         self.assertEqual(post.comments.count(), post_comments_count + 1)
         self.assertContains(response, 'Test comment in second')
+        self.assertEqual(response.status_code, 200)
 
     def test_cannot_create_comment_without_required_field(self):
         """New comment not created if required field is not filled in form."""

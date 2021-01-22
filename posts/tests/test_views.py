@@ -9,15 +9,12 @@ from django.urls import reverse
 from django import forms
 
 from posts.models import Group, Post, Follow, Comment
-from posts.forms import CommentForm
 
 
 User = get_user_model()
 INDEX_URL = reverse('index')
 NEW_URL = reverse('new_post')
 FOLLOW_URL = reverse('follow_index')
-URL_404 = reverse('404')
-URL_500 = reverse('500')
 IMG = (b'\x47\x49\x46\x38\x39\x61\x02\x00'
        b'\x01\x00\x80\x00\x00\x00\x00\x00'
        b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
@@ -74,7 +71,6 @@ class PostsViewsTests(TestCase):
             image=uploaded,
         )
         cls.posts_count = cls.user_bob.posts.count()
-        cls.all_posts = Post.objects.all()
 
     @classmethod
     def tearDownClass(cls):
@@ -114,7 +110,6 @@ class PostsViewsTests(TestCase):
             'profile.html': reverse('profile', args=[author]),
             'post.html': reverse('post', args=[author, post.id]),
             'posts/new.html': reverse('post_edit', args=[author, post.id]),
-            'misc/404.html': URL_404,
         }
         for template, reverse_name in templates_page_names.items():
             with self.subTest(template=template):
@@ -213,6 +208,13 @@ class PostsViewsTests(TestCase):
         form_field = response.context.get('form').fields.get('text')
         self.assertIsInstance(form_field, forms.fields.CharField)
 
+    def test_404_error_show_correct_context(self):
+        incorrect_url = '/wrong_address/'
+        response = self.guest_client.get(incorrect_url)
+        actual = response.context.get('path')
+        self.assertEqual(actual, incorrect_url)
+        self.assertEqual(response.status_code, 404)
+
     def test_homepage_show_correct_number_of_posts(self):
         """"Template homepage contains required amount of generated posts."""
         response = self.client_bob.get(INDEX_URL)
@@ -227,17 +229,27 @@ class PostsViewsTests(TestCase):
         response = self.client_john.get(group_url)
         self.assertEqual(len(response.context['page']), group_items)
 
-    def test_user_follow_and_unfollow_profile_author(self):
-        """Correct Follow object created between user and profile author.
-        After calling unfollow user stops following profile author.
-        """
+    def test_user_follow_profile_author(self):
+        """Correct Follow object created between user and profile author."""
         post = PostsViewsTests.post
         author = post.author
+        user = PostsViewsTests.user_john
+        follow_url = reverse('profile_follow', args=[author.username])
+        Follow.objects.all().delete()
+        self.client_john.get(follow_url)
+        exist_answer = Follow.objects.filter(user=user, author=author).exists()
+        self.assertEqual(exist_answer, True)
+
+    def test_user_unfollow_profile_author(self):
+        """After calling unfollow user stops following profile author."""
+        post = PostsViewsTests.post
+        author = post.author
+        user = PostsViewsTests.user_john
         follow_url = reverse('profile_follow', args=[author.username])
         unfollow_url = reverse('profile_unfollow', args=[author.username])
         Follow.objects.all().delete()
         self.client_john.get(follow_url)
-        user = PostsViewsTests.user_john
+        self.client_john.get(follow_url)
         exist_answer = Follow.objects.filter(user=user, author=author).exists()
         self.assertEqual(exist_answer, True)
         self.client_john.get(unfollow_url)
@@ -248,25 +260,26 @@ class PostsViewsTests(TestCase):
         """New post created by author seen only for followers and not seen
         on user's page who is not follower.
         """
-        user_author = PostsViewsTests.user_bob
-        user_follower = PostsViewsTests.user_john
-        user_not_follower = PostsViewsTests.user_alf
-        Follow.objects.all().delete()
-        Follow.objects.create(user=user_follower, author=user_author)
-        exist_answer = Follow.objects.filter(
-                       user=user_follower, author=user_author).exists()
-        self.assertEqual(exist_answer, True)
-        exist_answer = Follow.objects.filter(
-                       user=user_not_follower, author=user_author).exists()
-        self.assertEqual(exist_answer, False)
+        follower = PostsViewsTests.user_bob
+        author = PostsViewsTests.user_alf
+        Follow.objects.filter(author=author).delete()
+        Follow.objects.create(user=follower, author=author)
         new_post = Post.objects.create(
-            text='Test bob special post',
-            author=user_author,
-            group=Group.objects.get(slug='slug_one'),
+            text='Test Alf special post',
+            author=author,
         )
-        response_john = self.client_john.get(FOLLOW_URL)
-        response_alf = self.client_alf.get(FOLLOW_URL)
-        actual_john_post = response_john.context.get('post')
-        actual_alf_post = response_alf.context.get('post')
-        self.assertEqual(new_post, actual_john_post)
-        self.assertEqual(None, actual_alf_post)
+        response_follower = self.client_bob.get(FOLLOW_URL)
+        response_not_follower = self.client_john.get(FOLLOW_URL)
+        self.assertIn(new_post, response_follower.context['page'])
+        self.assertNotIn(new_post, response_not_follower.context['page'])
+
+    def test_profile_author_can_not_follow_himself(self):
+        """Profile author can not be follower of himself."""
+        post = PostsViewsTests.post
+        author = post.author
+        follow_url = reverse('profile_follow', args=[author.username])
+        Follow.objects.all().delete()
+        self.client_bob.get(follow_url)
+        user = PostsViewsTests.user_bob
+        exist_answer = Follow.objects.filter(user=user, author=author).exists()
+        self.assertEqual(exist_answer, False)

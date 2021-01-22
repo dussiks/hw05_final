@@ -3,6 +3,7 @@ import tempfile
 
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.cache import cache
 from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
 
@@ -15,6 +16,7 @@ INDEX_URL = '/'
 FOLLOW_URL = '/follow/'
 NEW_URL = '/new/'
 GROUP_URL = f'/group/{SLUG}/'
+URL_404 = '/wrong_address/'
 IMG = (b'\x47\x49\x46\x38\x39\x61\x02\x00'
        b'\x01\x00\x80\x00\x00\x00\x00\x00'
        b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
@@ -53,10 +55,6 @@ class PostsURLTests(TestCase):
             group=cls.group,
             image=uploaded,
         )
-        cls.follow = Follow.objects.create(
-            user=cls.user_john,
-            author=cls.user_bob,
-        )
         cls.comment = Comment.objects.create(
             post=cls.post,
             author=cls.user_john,
@@ -89,6 +87,7 @@ class PostsURLTests(TestCase):
             NEW_URL: 'posts/new.html',
             GROUP_URL: 'group.html',
             FOLLOW_URL: 'follow.html',
+            URL_404: 'misc/404.html',
             self.profile_url: 'profile.html',
             self.post_url: 'post.html',
             self.post_edit_url: 'posts/new.html',
@@ -105,12 +104,10 @@ class PostsURLTests(TestCase):
             NEW_URL: 302,
             GROUP_URL: 200,
             FOLLOW_URL: 302,
+            URL_404: 404,
             self.profile_url: 200,
             self.post_url: 200,
             self.post_edit_url: 302,
-            self.comment_url: 302,
-            self.user_follow_url: 302,
-            self.user_unfollow_url: 302,
         }
         for url_name, value in templates_url_names.items():
             with self.subTest(url_name=url_name):
@@ -126,12 +123,10 @@ class PostsURLTests(TestCase):
             NEW_URL: 200,
             GROUP_URL: 200,
             FOLLOW_URL: 200,
+            URL_404: 404,
             self.profile_url: 200,
             self.post_url: 200,
             self.post_edit_url: 200,
-            self.comment_url: 302,
-            self.user_follow_url: 302,
-            self.user_unfollow_url: 302,
             }
         for url_name, value in templates_url_names.items():
             with self.subTest(url_name=url_name):
@@ -158,10 +153,6 @@ class PostsURLTests(TestCase):
         """
         response = self.client_john.get(self.post_edit_url, follow=True)
         self.assertRedirects(response, self.post_url)
-
-    def test_wrong_url_returns_404_error(self):
-        response = self.guest_client.get('/404/')
-        self.assertEqual(response.status_code, 404)
 
     def test_pointed_urls_redirect_anonymous_user_to_login(self):
         post = PostsURLTests.post
@@ -198,3 +189,18 @@ class PostsURLTests(TestCase):
         """
         response = self.client_john.get(self.comment_url, follow=True)
         self.assertRedirects(response, self.post_url)
+
+    def test_cache_keeps_page_as_desired(self):
+        """Cache keeps content as desired and after cleaning
+        content changes.
+        """
+        response_first = self.guest_client.get(INDEX_URL)
+        Post.objects.create(
+            text="Cache testing post",
+            author=PostsURLTests.user_bob,
+        )
+        response_second = self.guest_client.get(INDEX_URL)
+        self.assertEqual(response_first.content, response_second.content)
+        cache.clear()
+        response_third = self.guest_client.get(INDEX_URL)
+        self.assertNotEqual(response_first.content, response_third.content)

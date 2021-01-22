@@ -16,11 +16,9 @@ def index(request):
     paginator = Paginator(post_list, PER_PAGE)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
-    index_page = paginator.get_page(1)
     context = {
         "page": page,
         "paginator": paginator,
-        "index_page": index_page,
     }
     return render(request, "index.html", context)
 
@@ -126,7 +124,7 @@ def add_comment(request, username, post_id):
         comment.author = request.user
         comment.post = post
         form.save()
-    return post_view(request, username, post_id)
+    return redirect('post', username=username, post_id=post_id)
 
 
 @login_required
@@ -151,7 +149,7 @@ def profile_follow(request, username):
     if user != follow_user and not Follow.objects.filter(
             author=follow_user, user=user).exists():
         Follow.objects.create(user=user, author=follow_user)
-    return profile(request, username)
+    return redirect('profile', username=username)
 
 
 @login_required
@@ -160,15 +158,15 @@ def profile_unfollow(request, username):
     follow_user = get_object_or_404(User, username=username)
     if Follow.objects.filter(author=follow_user, user=user).exists():
         Follow.objects.get(author=follow_user, user=user).delete()
-    return profile(request, username)
+    return redirect('profile', username=username)
 
 
-def page_not_found(request, exception):
+def page_not_found(request, exception=None):
     return render(
         request,
         "misc/404.html",
         {"path": request.path},
-        status=404
+        status=404,
     )
 
 
