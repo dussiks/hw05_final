@@ -109,7 +109,6 @@ class PostsViewsTests(TestCase):
             'group.html': reverse('group', args=['slug_one']),
             'profile.html': reverse('profile', args=[author]),
             'post.html': reverse('post', args=[author, post.id]),
-            'posts/new.html': reverse('post_edit', args=[author, post.id]),
         }
         for template, reverse_name in templates_page_names.items():
             with self.subTest(template=template):
