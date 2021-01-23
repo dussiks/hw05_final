@@ -141,7 +141,7 @@ class PostsViewsTests(TestCase):
             author: response.context.get('author'),
             author.following.count(): response.context.get('followers_count'),
             author.follower.count(): response.context.get('followings_count'),
-            True: response.context.get('following'),
+            True: response.context.get('is_following'),
         }
         for key, value in expected_page_details.items():
             with self.subTest(key=key):

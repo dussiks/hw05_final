@@ -22,7 +22,8 @@ IMG = (b'\x47\x49\x46\x38\x39\x61\x02\x00'
        b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
        b'\x00\x00\x00\x2C\x00\x00\x00\x00'
        b'\x02\x00\x01\x00\x00\x02\x02\x0C'
-       b'\x0A\x00\x3B')
+       b'\x0A\x00\x3B'
+)
 
 
 class PostsURLTests(TestCase):
@@ -60,6 +61,12 @@ class PostsURLTests(TestCase):
             author=cls.user_john,
             text='Тестовый комментарий Джона к посту Боба.',
         )
+        cls.profile_url = f'/{cls.post.author.username}/'
+        cls.post_url = f'/{cls.post.author.username}/{cls.post.id}/'
+        cls.post_edit_url = f'/{cls.post.author.username}/{cls.post.id}/edit/'
+        cls.comment_url = f'/{cls.post.author.username}/{cls.post.id}/comment/'
+        cls.user_follow_url = f'/{cls.post.author.username}/follow/'
+        cls.user_unfollow_url = f'/{cls.post.author.username}/unfollow/'
 
     @classmethod
     def tearDownClass(cls):
@@ -67,18 +74,11 @@ class PostsURLTests(TestCase):
         super().tearDownClass()
 
     def setUp(self):
-        post = PostsURLTests.post
         self.guest_client = Client()
         self.client_bob = Client()
         self.client_john = Client()
         self.client_bob.force_login(PostsURLTests.user_bob)
         self.client_john.force_login(PostsURLTests.user_john)
-        self.profile_url = f'/{post.author.username}/'
-        self.post_url = f'/{post.author.username}/{post.id}/'
-        self.post_edit_url = f'/{post.author.username}/{post.id}/edit/'
-        self.comment_url = f'/{post.author.username}/{post.id}/comment/'
-        self.user_follow_url = f'/{post.author.username}/follow/'
-        self.user_unfollow_url = f'/{post.author.username}/unfollow/'
 
     def test_urls_uses_correct_template(self):
         """URL-address uses corresponding template."""
@@ -91,7 +91,7 @@ class PostsURLTests(TestCase):
             self.profile_url: 'profile.html',
             self.post_url: 'post.html',
             self.post_edit_url: 'posts/new.html',
-            }
+        }
         for url_name, template in templates_url_names.items():
             with self.subTest(url_name=url_name):
                 response = self.client_bob.get(url_name)
@@ -127,7 +127,7 @@ class PostsURLTests(TestCase):
             self.profile_url: 200,
             self.post_url: 200,
             self.post_edit_url: 200,
-            }
+        }
         for url_name, value in templates_url_names.items():
             with self.subTest(url_name=url_name):
                 response = self.client_bob.get(url_name)
@@ -141,16 +141,10 @@ class PostsURLTests(TestCase):
         self.assertEqual(response.status_code, 302)
 
     def test_post_edit_url_redirect_anonymous_user(self):
-        """After calling url for post edit by unauthorized user he is
-        redirected to post viewing page.
-        """
         response = self.guest_client.get(self.post_edit_url, follow=True)
         self.assertRedirects(response, self.post_url)
 
     def test_post_edit_url_redirect_authorized_user_not_author(self):
-        """After calling url for post edit by authorized but not
-        post author user he is redirected to post viewing page.
-        """
         response = self.client_john.get(self.post_edit_url, follow=True)
         self.assertRedirects(response, self.post_url)
 
@@ -163,37 +157,24 @@ class PostsURLTests(TestCase):
             self.comment_url: f'/auth/login/?next=/{author}/{post.id}/comment/',
             self.user_follow_url: f'/auth/login/?next=/{author}/follow/',
             self.user_unfollow_url: f'/auth/login/?next=/{author}/unfollow/',
-            }
+        }
         for url_name, redirect_address in templates_urls.items():
             with self.subTest(url_name=url_name):
                 response = self.guest_client.get(url_name)
                 self.assertRedirects(response, redirect_address)
 
-    def test_user_follow_url_redirect_author(self):
-        """If authorized user calls url to follow profile author
-        he is redirected to profile viewing page.
-        """
-        response = self.client_john.get(self.user_follow_url, follow=True)
-        self.assertRedirects(response, self.profile_url)
+    def test_pointed_urls_redirects_authorized_user_as_desired(self):    
+        templates_urls = {
+            self.user_follow_url: self.profile_url,
+            self.user_unfollow_url: self.profile_url,
+            self.comment_url: self.post_url,
+        }
+        for url_name, redirect_url in templates_urls.items():
+            with self.subTest(url_name=url_name):
+                response = self.client_bob.get(url_name)
+                self.assertRedirects(response, redirect_url)
 
-    def test_user_unfollow_url_redirect_authorized_user(self):
-        """If authorized user calls url to unfollow profile author
-        he is redirected to profile viewing page.
-        """
-        response = self.client_john.get(self.user_unfollow_url, follow=True)
-        self.assertRedirects(response, self.profile_url)
-
-    def test_comment_url_redirect_user(self):
-        """If authorized user calls url for post comment he is redirected
-        to post viewing page.
-        """
-        response = self.client_john.get(self.comment_url, follow=True)
-        self.assertRedirects(response, self.post_url)
-
-    def test_cache_keeps_page_as_desired(self):
-        """Cache keeps content as desired and after cleaning
-        content changes.
-        """
+    def test_index_cache(self):
         response_first = self.guest_client.get(INDEX_URL)
         Post.objects.create(
             text="Cache testing post",

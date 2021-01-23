@@ -16,7 +16,8 @@ IMG = (b'\x47\x49\x46\x38\x39\x61\x02\x00'
        b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
        b'\x00\x00\x00\x2C\x00\x00\x00\x00'
        b'\x02\x00\x01\x00\x00\x02\x02\x0C'
-       b'\x0A\x00\x3B')
+       b'\x0A\x00\x3B'
+)
 
 
 class PostCommentModelTest(TestCase):
@@ -71,20 +72,12 @@ class PostCommentModelTest(TestCase):
                     post._meta.get_field(value).help_text, expected)
 
     def test_post_name_is_text_field(self):
-        """In __str__ field of post object written value of
-        post.text[:15] field.
-        """
         post = PostCommentModelTest.post
-        expected_post_name = post.text[:15]
-        self.assertEqual(expected_post_name, str(post))
+        self.assertEqual(post.text[:15], str(post))
 
     def test_comment_name_is_text_field(self):
-        """In __str__ field of comment object written value of
-        post.text[:20] field.
-        """
         comment = PostCommentModelTest.comment
-        expected_comment_name = comment.text[:20]
-        self.assertEqual(expected_comment_name, str(comment))
+        self.assertEqual(comment.text[:20], str(comment))
 
 
 class GroupModelTest(TestCase):
@@ -124,8 +117,4 @@ class GroupModelTest(TestCase):
                     group._meta.get_field(value).help_text, expected)
 
     def test_group_name_is_title_field(self):
-        """
-        In __str__ field of group object written value of group.title field.
-        """
-        expected_object_name = GroupModelTest.group.title
-        self.assertEqual(expected_object_name, str(GroupModelTest.group))
+        self.assertEqual(GroupModelTest.group.title, str(GroupModelTest.group))

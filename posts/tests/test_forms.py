@@ -18,7 +18,8 @@ IMG = (b'\x47\x49\x46\x38\x39\x61\x02\x00'
        b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
        b'\x00\x00\x00\x2C\x00\x00\x00\x00'
        b'\x02\x00\x01\x00\x00\x02\x02\x0C'
-       b'\x0A\x00\x3B')
+       b'\x0A\x00\x3B'
+)
 
 
 class PostFormTests(TestCase):
@@ -121,7 +122,8 @@ class PostFormTests(TestCase):
         )
         self.assertRedirects(
             response,
-            reverse('post', args=[post.author.username, post.id]))
+            reverse('post', args=[post.author.username, post.id])
+        )
         self.assertContains(response, 'Edited')
         self.assertEqual(response.status_code, 200)
 
@@ -139,7 +141,8 @@ class PostFormTests(TestCase):
         )
         self.assertRedirects(
             response,
-            reverse('post', args=[post.author.username, post.id]))
+            reverse('post', args=[post.author.username, post.id])
+        )
         self.assertEqual(post.comments.count(), post_comments_count + 1)
         self.assertContains(response, 'Test comment in second')
         self.assertEqual(response.status_code, 200)
@@ -148,10 +151,9 @@ class PostFormTests(TestCase):
         """New comment not created if required field is not filled in form."""
         post = PostFormTests.post
         post_comments_count = post.comments.count()
-        form_data = {}
         response = self.client_john.post(
             reverse('add_comment', args=[post.author.username, post.id]),
-            data=form_data,
+            data={},
             follow=True,
         )
         self.assertEqual(post.comments.count(), post_comments_count)
