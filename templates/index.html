@@ -4,7 +4,7 @@
 {% block content %}
   <div class="container">
 
-    {% include "menu.html" with index=True %}
+    {% include "include/menu.html" with index=True %}
 
         <h1>Последние обновления на сайте</h1>
         
@@ -16,7 +16,7 @@
         {% endcache %}
 
         {% if page.has_other_pages %}
-            {% include "paginator.html" with items=page paginator=paginator%}
+            {% include "include/paginator.html" with items=page paginator=paginator%}
         {% endif %}
     </div>
 {% endblock %}

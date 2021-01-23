@@ -2,7 +2,7 @@
 {% block title %}Записи по подписке{% endblock %}
 {% block content %}
 
-    {% include "menu.html" with follow=True %}
+    {% include "include/menu.html" with follow=True %}
     <h1>Записи любимых авторов</h1>
 
         {% for post in page %}
@@ -10,6 +10,6 @@
         {% endfor %}
 
     {% if page.has_other_pages %}
-        {% include "paginator.html" with items=page paginator=paginator%}
+        {% include "include/paginator.html" with items=page paginator=paginator%}
     {% endif %}
 {% endblock %} 
