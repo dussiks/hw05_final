@@ -22,8 +22,7 @@ IMG = (b'\x47\x49\x46\x38\x39\x61\x02\x00'
        b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
        b'\x00\x00\x00\x2C\x00\x00\x00\x00'
        b'\x02\x00\x01\x00\x00\x02\x02\x0C'
-       b'\x0A\x00\x3B'
-)
+       b'\x0A\x00\x3B')
 
 
 class PostsURLTests(TestCase):
@@ -163,7 +162,7 @@ class PostsURLTests(TestCase):
                 response = self.guest_client.get(url_name)
                 self.assertRedirects(response, redirect_address)
 
-    def test_pointed_urls_redirects_authorized_user_as_desired(self):    
+    def test_pointed_urls_redirects_authorized_user_as_desired(self):
         templates_urls = {
             self.user_follow_url: self.profile_url,
             self.user_unfollow_url: self.profile_url,
