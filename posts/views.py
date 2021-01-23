@@ -67,7 +67,7 @@ def profile(request, username):
     followers_count = author.following.count()
     followings_count = author.follower.count()
     is_following = (request.user.is_authenticated and
-                 Follow.objects.filter(author=author, user=user).exists())
+                    Follow.objects.filter(author=author, user=user).exists())
     context = {
         "page": page,
         "author": author,
