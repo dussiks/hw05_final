@@ -66,6 +66,10 @@ class PostsURLTests(TestCase):
         cls.comment_url = f'/{cls.post.author.username}/{cls.post.id}/comment/'
         cls.user_follow_url = f'/{cls.post.author.username}/follow/'
         cls.user_unfollow_url = f'/{cls.post.author.username}/unfollow/'
+        cls.client_bob = Client()
+        cls.client_john = Client()
+        cls.client_bob.force_login(cls.user_bob)
+        cls.client_john.force_login(cls.user_john)
 
     @classmethod
     def tearDownClass(cls):
@@ -74,10 +78,6 @@ class PostsURLTests(TestCase):
 
     def setUp(self):
         self.guest_client = Client()
-        self.client_bob = Client()
-        self.client_john = Client()
-        self.client_bob.force_login(PostsURLTests.user_bob)
-        self.client_john.force_login(PostsURLTests.user_john)
 
     def test_urls_uses_correct_template(self):
         """URL-address uses corresponding template."""

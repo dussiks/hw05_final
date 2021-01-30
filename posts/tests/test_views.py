@@ -71,6 +71,21 @@ class PostsViewsTests(TestCase):
             image=uploaded,
         )
         cls.posts_count = cls.user_bob.posts.count()
+        cls.client_bob = Client()
+        cls.client_john = Client()
+        cls.client_alf = Client()
+        cls.client_bob.force_login(cls.user_bob)
+        cls.client_john.force_login(cls.user_john)
+        cls.client_alf.force_login(cls.user_alf)
+        cls.follow = Follow.objects.create(
+            user=cls.user_john,
+            author=cls.user_bob,
+        )
+        cls.comment = Comment.objects.create(
+            author=cls.user_john,
+            post=PostsViewsTests.post,
+            text='Тестовый комментарий Джона на пост Боба.'
+        )
 
     @classmethod
     def tearDownClass(cls):

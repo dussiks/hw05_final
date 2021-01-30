@@ -1,3 +1,4 @@
+from shutil import get_archive_formats
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
@@ -31,7 +32,10 @@ def group_posts(request, slug):
     """
     group = get_object_or_404(Group, slug=slug)
     group_posts = Post.objects.select_related(
-                   'author', 'group').filter(group=group)
+                        'author', 'group'
+                    ).filter(
+                        group=group
+                    )
     paginator = Paginator(group_posts, PER_PAGE)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
@@ -59,7 +63,10 @@ def profile(request, username):
     user = request.user
     author = get_object_or_404(User, username=username)
     author_posts = Post.objects.select_related(
-                    'author', 'group').filter(author=author)
+                        'author', 'group'
+                    ).filter(
+                        author=author
+                    )
     posts_count = author.posts.count()
     paginator = Paginator(author_posts, PER_PAGE)
     page_number = request.GET.get('page')
@@ -84,7 +91,10 @@ def post_view(request, username, post_id):
     author = get_object_or_404(User, username=username)
     post = get_object_or_404(Post, author=author, id=post_id)
     comments_list = Comment.objects.select_related(
-                     'author', 'post').filter(post=post)
+                            'author', 'post'
+                        ).filter(
+                            post=post
+                        )
     posts_count = author.posts.count()
     followers_count = author.following.count()
     followings_count = author.follower.count()
@@ -137,8 +147,11 @@ def add_comment(request, username, post_id):
 @login_required
 def follow_index(request):
     user = request.user
-    posts_list = Post.objects.select_related('author', 'group').filter(
-                 author__following__user=user)
+    posts_list = Post.objects.select_related(
+                        'author', 'group'
+                    ).filter(
+                        author__following__user=user
+                    )
     paginator = Paginator(posts_list, PER_PAGE)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
