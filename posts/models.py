@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.db.models.query import QuerySet
 
 
 User = get_user_model()
@@ -24,6 +25,20 @@ class Group(models.Model):
         return self.title
 
 
+class PostManager(models.Manager):
+    def __getattr__(self, attr, *args):
+        try:
+            return getattr(self.__class__, attr, *args)
+        except AttributeError:
+            # don't delegate internal methods to the queryset
+            if attr.startswith('__') and attr.endswith('__'):
+                raise
+            return getattr(self.get_query_set(), attr, *args)
+
+    def optimized(self):
+        return self.select_related('author', 'group').all()
+
+
 class Post(models.Model):
     text = models.TextField(
         verbose_name='текст',
@@ -45,6 +60,8 @@ class Post(models.Model):
         help_text='Выберите группу. Это необязательно.',
     )
     image = models.ImageField(upload_to="posts/", blank=True, null=True,)
+    objects = PostManager()
+
 
     class Meta:
         ordering = ("-pub_date",)
